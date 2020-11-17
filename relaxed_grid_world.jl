@@ -3,16 +3,17 @@ struct RelaxedGridWorld <: MDP{GWPos, Vector{Symbol}}
     action_subsets::Vector # action subsets to consider
     subset_inds::Dict # maps subsets to indices for efficient indexing
     subset_size_reward::Float64 # reward for additional actions
+    discount::Float64 # discount factor to prevent cycles
 end
 
-function RelaxedGridWorld(;gw = image_grid_world(), action_subset_size = 4, subset_size_reward = 0.001)
+function RelaxedGridWorld(;gw = image_grid_world(), action_subset_size = 4, subset_size_reward = 0.001, discount = 1.0)
     gw_actions = actions(gw)
     action_subsets = [combo for i = 1:action_subset_size for combo in combinations(gw_actions, i)]
     subset_inds = Dict()
     for i = 1:length(action_subsets)
         subset_inds[action_subsets[i]] = i
     end
-    return RelaxedGridWorld(gw, action_subsets, subset_inds, subset_size_reward)
+    return RelaxedGridWorld(gw, action_subsets, subset_inds, subset_size_reward, discount)
 end
 
 # States
@@ -75,4 +76,4 @@ function POMDPs.reward(mdp::RelaxedGridWorld, s::AbstractVector{Int}, a::Vector{
     return r
 end
 
-POMDPs.discount(mdp::RelaxedGridWorld) = mdp.gw.discount
+POMDPs.discount(mdp::RelaxedGridWorld) = mdp.discount

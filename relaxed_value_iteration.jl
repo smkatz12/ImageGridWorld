@@ -86,7 +86,7 @@ function solve(solver::RelaxedValueIterationSolver, mdp::MDP; kwargs...)
                 for a in sub_aspace
                     iaction = actionindex(mdp, a)
                     future_util = transition(mdp, s, a, util) # creates distribution over neighbors
-                    new_util = reward(mdp, s, a) + future_util
+                    new_util = reward(mdp, s, a) + discount_factor * future_util
                     if new_util > max_util
                         max_util = new_util
                         pol[istate] = iaction
