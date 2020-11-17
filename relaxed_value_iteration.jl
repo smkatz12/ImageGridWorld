@@ -46,6 +46,7 @@ function solve(solver::RelaxedValueIterationSolver, mdp::MDP; kwargs...)
     max_iterations = solver.max_iterations
     belres = solver.belres
     discount_factor = discount(mdp)
+    println("discount: ", discount_factor)
     ns = length(states(mdp))
     na = length(actions(mdp))
 
@@ -54,7 +55,7 @@ function solve(solver::RelaxedValueIterationSolver, mdp::MDP; kwargs...)
         @assert length(solver.init_util) == ns "Input utility dimension mismatch"
         util = solver.init_util
     else
-        util = zeros(ns)
+        util = ones(ns)
     end
     include_Q = solver.include_Q
     if include_Q
@@ -71,32 +72,41 @@ function solve(solver::RelaxedValueIterationSolver, mdp::MDP; kwargs...)
     # main loop
     for i = 1:max_iterations
         residual = 0.0
+        resdual_state = -1
         iter_time = @elapsed begin
         # state loop
         for (istate,s) in enumerate(state_space)
-            sub_aspace = actions(mdp, s)
+            sub_aspace = reverse(actions(mdp, s))
             if isterminal(mdp, s)
                 util[istate] = 0.0
                 pol[istate] = 1
             else
                 old_util = util[istate] # for residual
-                max_util = -Inf
+                min_util = Inf
+                actual_util = Inf
                 # action loop
                 # util(s) = max_a( R(s,a) + discount_factor * sum(T(s'|s,a)util(s') )
                 for a in sub_aspace
+                    
                     iaction = actionindex(mdp, a)
                     future_util = transition(mdp, s, a, util) # creates distribution over neighbors
                     new_util = reward(mdp, s, a) + discount_factor * future_util
-                    if new_util > max_util
-                        max_util = new_util
+                    δ = mdp.subset_size_reward * (length(a) - 1)
+                    
+                    if new_util - δ < min_util
+                        min_util = new_util - δ
+                        actual_util = new_util
                         pol[istate] = iaction
                     end
                     include_Q ? (qmat[istate, iaction] = new_util) : nothing
                 end # action
                 # update the value array
-                util[istate] = max_util
-                diff = abs(max_util - old_util)
-                diff > residual ? (residual = diff) : nothing
+                util[istate] = actual_util
+                diff = abs(util[istate] - old_util)
+                if diff > residual
+                    residual = diff
+                    resdual_state = s
+                end
             end
         end # state
         end # time
@@ -110,3 +120,4 @@ function solve(solver::RelaxedValueIterationSolver, mdp::MDP; kwargs...)
         return ValueIterationPolicy(mdp, utility=util, policy=pol, include_Q=false)
     end
 end
+

@@ -43,7 +43,7 @@ function POMDPs.transition(mdp::RelaxedGridWorld, s::AbstractVector{Int}, a::Vec
         return 0.0
     end
 
-    future_util = Inf
+    future_util = -Inf
     # Test each grid world action in the subset and find worst case future utility
     for gwa in a
         dist = transition(mdp.gw, s, gwa)
@@ -53,7 +53,7 @@ function POMDPs.transition(mdp::RelaxedGridWorld, s::AbstractVector{Int}, a::Vec
             isp = stateindex(mdp.gw, sp)
             action_future_util += p * util[isp]
         end
-        action_future_util < future_util ? future_util = action_future_util : nothing
+        action_future_util > future_util ? future_util = action_future_util : nothing
     end
 
     return future_util
@@ -65,13 +65,16 @@ function POMDPs.reward(mdp::RelaxedGridWorld, s::AbstractVector{Int}, a::Vector{
     r = 0.0
 
     # Reward for goal state
-    if tuple(s...) == mdp.gw.size
+    # if tuple(s...) == mdp.gw.size
+        # r += 1.0
+    # end
+    if get(mdp.gw.rewards, s, 0) < 0
         r += 1.0
     end
 
     # Reward for having multiple possible actions
     # Nonzero reward for any action subset larger than 2
-    r += mdp.subset_size_reward * (length(a) - 1)
+    # r += mdp.subset_size_reward * (length(a) - 1)
 
     return r
 end
